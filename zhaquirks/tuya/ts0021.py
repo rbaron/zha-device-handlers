@@ -85,6 +85,7 @@ class TuyaCustomPowerCluster(TuyaPowerConfigurationCluster2AAA):
     """Tuya Custom PowerCluster. This cluster is used to report battery percentage."""
 
     def __init__(self, *args, **kwargs):
+        """Init cluster."""
         super().__init__(*args, **kwargs)
         self.endpoint.device.battery_pct_bus.add_listener(self)
 
