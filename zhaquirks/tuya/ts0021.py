@@ -5,7 +5,7 @@ from zigpy.quirks import CustomDevice
 from zigpy.zcl.clusters.general import Basic, Ota, PowerConfiguration, Time
 from zigpy.zcl.clusters.security import IasZone
 
-from zhaquirks import Bus, EventableCluster, LocalDataCluster
+from zhaquirks import Bus, EventableCluster
 from zhaquirks.const import (
     ARGS,
     ATTRIBUTE_ID,
@@ -81,7 +81,6 @@ class TuyaCustomCluster(TuyaNewManufCluster, EventableCluster):
         )
 
 
-# class TuyaCustomPowerCluster(LocalDataCluster, PowerConfiguration):
 class TuyaCustomPowerCluster(TuyaPowerConfigurationCluster2AAA):
     """Tuya Custom PowerCluster. This cluster is used to report battery percentage."""
 
