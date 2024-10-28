@@ -5,7 +5,7 @@ from zigpy.quirks import CustomDevice
 from zigpy.zcl.clusters.general import Basic, Ota, PowerConfiguration, Time
 from zigpy.zcl.clusters.security import IasZone
 
-from zhaquirks import EventableCluster
+from zhaquirks import Bus, EventableCluster, LocalDataCluster
 from zhaquirks.const import (
     ARGS,
     ATTRIBUTE_ID,
@@ -29,6 +29,7 @@ from zhaquirks.tuya import (
     DPToAttributeMapping,
     TuyaDatapointData,
     TuyaNewManufCluster,
+    TuyaPowerConfigurationCluster2AAA,
 )
 
 BTN_1 = "Button 1"
@@ -57,6 +58,7 @@ class TuyaCustomCluster(TuyaNewManufCluster, EventableCluster):
     data_point_handlers = {
         1: "_dp_2_attr_update",
         2: "_dp_2_attr_update",
+        10: "_battery_pct_attr_update",
     }
 
     def _dp_2_attr_update(self, datapoint: TuyaDatapointData) -> None:
@@ -73,9 +75,35 @@ class TuyaCustomCluster(TuyaNewManufCluster, EventableCluster):
             },
         )
 
+    def _battery_pct_attr_update(self, datapoint: TuyaDatapointData) -> None:
+        self.endpoint.device.battery_pct_bus.listener_event(
+            "battery_percentage_reported", datapoint.data.payload
+        )
+
+
+# class TuyaCustomPowerCluster(LocalDataCluster, PowerConfiguration):
+class TuyaCustomPowerCluster(TuyaPowerConfigurationCluster2AAA):
+    """Tuya Custom PowerCluster. This cluster is used to report battery percentage."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.endpoint.device.battery_pct_bus.add_listener(self)
+
+    def battery_percentage_reported(self, value: int) -> None:
+        """Handle battery percentage reported."""
+        # Reports battery percentage in 0.5% increments; i.e. 2 x the actual percentage.
+        self._update_attribute(
+            self.AttributeDefs.battery_percentage_remaining.id, 2 * value
+        )
+
 
 class TS0021(CustomDevice):
     """Tuya TS0021 2-button switch device."""
+
+    def __init__(self, *args, **kwargs):
+        """Init device."""
+        self.battery_pct_bus = Bus()
+        super().__init__(*args, **kwargs)
 
     signature = {
         # SizePrefixedSimpleDescriptor(endpoint=1, profile=260, device_type=1026,
@@ -108,6 +136,7 @@ class TS0021(CustomDevice):
                 DEVICE_TYPE: zha.DeviceType.IAS_ZONE,
                 INPUT_CLUSTERS: [
                     Basic.cluster_id,
+                    TuyaCustomPowerCluster,
                     TuyaCustomCluster,
                 ],
                 OUTPUT_CLUSTERS: [
